@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Novita Resource Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <h1><span class="dot" id="conn-dot"></span> Novita</h1>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="account-switcher" style="margin-bottom:2px;">Active account</label>
+        <select id="account-switcher"><option value="">Session key (Settings)</option></select>
+      </div>
+      <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+      <button class="nav-btn" data-page="instances">GPU Instances</button>
+      <button class="nav-btn" data-page="endpoints">Serverless Endpoints</button>
+      <button class="nav-btn" data-page="sandboxes">Sandboxes</button>
+      <button class="nav-btn" data-page="volumes">Data Volumes</button>
+      <button class="nav-btn" data-page="agent">AI Agent</button>
+      <button class="nav-btn" data-page="templates">Templates</button>
+      <button class="nav-btn" data-page="networks">VPC Networks</button>
+      <button class="nav-btn" data-page="storage">Network Storage</button>
+      <button class="nav-btn" data-page="registry">Registry Auth</button>
+      <button class="nav-btn" data-page="billing">Billing</button>
+      <button class="nav-btn" data-page="keys">API Keys</button>
+      <button class="nav-btn" data-page="accounts">Accounts</button>
+      <button class="nav-btn" data-page="settings">Settings</button>
+      <div class="sidebar-footer">Local dashboard &middot; talks directly to api.novita.ai via this server</div>
+    </nav>
+
+    <main class="main">
+      <!-- Dashboard -->
+      <section id="page-dashboard" class="page">
+        <div class="page-header">
+          <div>
+            <h2>Dashboard</h2>
+            <div class="sub">Account balance and resource overview</div>
+          </div>
+          <div class="toolbar"><button class="btn" data-refresh="dashboard">Refresh</button></div>
+        </div>
+        <div class="stat-grid" id="balance-stats"></div>
+        <div class="stat-grid" id="resource-stats"></div>
+      </section>
+
+      <!-- GPU Instances -->
+      <section id="page-instances" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>GPU Instances</h2>
+            <div class="sub">Create, start, stop, restart, and delete GPU/CPU instances</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="instances">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-instance">+ New Instance</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-instances"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Serverless Endpoints -->
+      <section id="page-endpoints" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Serverless Endpoints</h2>
+            <div class="sub">Autoscaling GPU endpoints for serving HTTP workloads</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="endpoints">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-endpoint">+ New Endpoint</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-endpoints"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Sandboxes -->
+      <section id="page-sandboxes" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Sandboxes</h2>
+            <div class="sub">Isolated execution environments for agent workloads.</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="sandboxes">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-sandbox">+ New Sandbox</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-sandboxes"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Data Volumes -->
+      <section id="page-volumes" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Data Volumes</h2>
+            <div class="sub">Persistent storage that survives independently of any one sandbox — mount the same volume into a new sandbox to pick data back up after the old one is killed or times out.</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="volumes">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-volume">+ New Volume</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-volumes"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- AI Agent -->
+      <section id="page-agent" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>AI Agent</h2>
+            <div class="sub">Chat with a Novita-hosted model that can create and manage sandboxes on your behalf.</div>
+          </div>
+          <div class="toolbar">
+            <select id="agent-model" style="width:auto; min-width:220px;"></select>
+            <button class="btn" id="btn-clear-chat">Clear chat</button>
+          </div>
+        </div>
+        <div class="card" id="agent-chat" style="min-height:360px; max-height:55vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; margin-bottom:12px;"></div>
+        <form id="agent-form" style="display:flex; gap:8px;">
+          <input id="agent-input" placeholder="e.g. Create a sandbox and set up Claude Code in it" autocomplete="off" style="flex:1;" />
+          <button class="btn btn-primary" type="submit" id="agent-send">Send</button>
+        </form>
+      </section>
+
+      <!-- Templates -->
+      <section id="page-templates" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Sandbox Templates</h2>
+            <div class="sub">Sandbox templates you own — pass one as the template when creating a sandbox. Novita's built-in templates (base, browser-chromium) are not listed here but remain usable.</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="templates">Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-sandbox-templates"><thead></thead><tbody></tbody></table></div>
+
+        <div class="page-header" style="margin-top:28px;">
+          <div>
+            <h2>GPU Instance Templates</h2>
+            <div class="sub">Private container templates for GPU instances — a separate namespace, not usable by sandboxes</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-primary" id="btn-new-template">+ New Template</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-templates"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- VPC Networks -->
+      <section id="page-networks" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>VPC Networks</h2>
+            <div class="sub">Private networks instances can join</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="networks">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-network">+ New Network</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-networks"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Network Storage -->
+      <section id="page-storage" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Network Storage</h2>
+            <div class="sub">Persistent cloud volumes mountable into instances/endpoints</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="storage">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-storage">+ New Storage</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-storage"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Registry Auth -->
+      <section id="page-registry" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Container Registry Auth</h2>
+            <div class="sub">Credentials for pulling private images</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="registry">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-registry">+ New Credential</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-registry"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Billing -->
+      <section id="page-billing" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Billing</h2>
+            <div class="sub">Balance, usage, and transaction history</div>
+          </div>
+          <div class="toolbar"><button class="btn" data-refresh="billing">Refresh</button></div>
+        </div>
+        <div class="stat-grid" id="billing-stats"></div>
+
+        <div class="page-header" style="margin-top:8px;">
+          <h2 style="font-size:15px;">Usage (last 7 days, by product)</h2>
+          <div class="toolbar">
+            <select id="usage-category" style="width:auto;">
+              <option value="summary">summary</option>
+              <option value="gpu">gpu</option>
+              <option value="llm">llm</option>
+              <option value="serverless">serverless</option>
+              <option value="cloud_storage">cloud_storage</option>
+              <option value="gen_api">gen_api</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="tbl-usage"><thead></thead><tbody></tbody></table></div>
+
+        <div class="page-header" style="margin-top:20px;">
+          <h2 style="font-size:15px;">Recent Transactions</h2>
+        </div>
+        <div class="table-wrap"><table id="tbl-transactions"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- API Keys -->
+      <section id="page-keys" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>API Keys</h2>
+            <div class="sub">Keys on this team (read-only view; manage in the Novita console)</div>
+          </div>
+          <div class="toolbar"><button class="btn" data-refresh="keys">Refresh</button></div>
+        </div>
+        <div class="table-wrap"><table id="tbl-keys"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Accounts -->
+      <section id="page-accounts" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Accounts</h2>
+            <div class="sub">Save multiple Novita accounts (e.g. separate signup vouchers) and switch between them from the sidebar instead of retyping keys.</div>
+          </div>
+          <div class="toolbar">
+            <button class="btn" data-refresh="accounts">Refresh</button>
+            <button class="btn btn-primary" id="btn-new-account">+ Add Account</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px; font-size:12.5px; color:var(--text-dim);">
+          Saved accounts are stored in <span class="mono">data/accounts.json</span> on this machine only (gitignored) &mdash;
+          never uploaded anywhere except to Novita's own API when you use that account. Balances shown include any promotional
+          voucher credit Novita has applied to the account.
+        </div>
+        <div class="table-wrap"><table id="tbl-accounts"><thead></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- Settings -->
+      <section id="page-settings" class="page" hidden>
+        <div class="page-header">
+          <div>
+            <h2>Settings</h2>
+            <div class="sub">A quick one-off key for this browser tab only. To juggle several Novita accounts, use the Accounts tab instead.</div>
+          </div>
+        </div>
+        <div class="card" style="max-width:480px;">
+          <div class="field">
+            <label for="settings-api-key">Novita API Key (session only, not saved to disk)</label>
+            <input type="password" id="settings-api-key" placeholder="Bearer token from novita.ai/settings/key-management" autocomplete="off" />
+            <div class="hint">Get a key at <span class="mono">novita.ai/settings/key-management</span></div>
+          </div>
+          <button class="btn btn-primary" id="btn-save-key">Save &amp; Test Connection</button>
+          <span id="key-status" style="margin-left:10px; font-size:13px;"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div class="toast-stack" id="toast-stack"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

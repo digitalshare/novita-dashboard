@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terminal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; margin: 0; background: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 14px; background: #171a21; border-bottom: 1px solid #2a2e37;
+      color: #9aa1ac; font-size: 13px;
+    }
+    #bar .name { color: #e8eaed; font-weight: 600; }
+    #bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
+    #bar .dot.ok { background: #34d399; }
+    #bar .dot.err { background: #ef4444; }
+    #term { position: absolute; top: 41px; left: 0; right: 0; bottom: 0; padding: 8px; box-sizing: border-box; }
+    #measure { position: absolute; visibility: hidden; white-space: pre; top: -9999px; left: -9999px; }
+  </style>
+</head>
+<body>
+  <div id="bar"><span class="dot" id="dot"></span><span class="name" id="title-name">Terminal</span><span id="status">Connecting…</span></div>
+  <div id="term"></div>
+  <div id="measure"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const sandboxId = params.get('sandbox');
+    const dot = document.getElementById('dot');
+    const statusEl = document.getElementById('status');
+    document.getElementById('title-name').textContent = sandboxId || '(no sandbox specified)';
+    document.title = `Terminal — ${sandboxId || 'unknown'}`;
+
+    function authHeaders() {
+      const accountId = localStorage.getItem('novita_active_account');
+      if (accountId) return { 'x-novita-account': accountId };
+      const key = sessionStorage.getItem('novita_api_key');
+      if (key) return { 'x-novita-key': key };
+      return null;
+    }
+
+    function measureCell(fontFamily, fontSize) {
+      const el = document.getElementById('measure');
+      el.style.fontFamily = fontFamily;
+      el.style.fontSize = fontSize + 'px';
+      el.textContent = 'W'.repeat(50);
+      const width = el.getBoundingClientRect().width / 50;
+      el.textContent = 'W\nW';
+      const height = el.getBoundingClientRect().height / 2;
+      return { width, height };
+    }
+
+    async function main() {
+      if (!sandboxId) {
+        statusEl.textContent = 'No sandbox specified.';
+        dot.className = 'dot err';
+        return;
+      }
+      const headers = authHeaders();
+      if (!headers) {
+        statusEl.textContent = 'No active account in this browser session — pick one in the dashboard, then reopen this terminal.';
+        dot.className = 'dot err';
+        return;
+      }
+
+      const fontFamily = 'Menlo, Monaco, "Courier New", monospace';
+      const fontSize = 14;
+      const term = new window.Terminal({ cursorBlink: true, fontFamily, fontSize });
+      const container = document.getElementById('term');
+      term.open(container);
+      term.focus();
+
+      const cell = measureCell(fontFamily, fontSize);
+      function fit() {
+        const cols = Math.max(20, Math.floor(container.clientWidth / cell.width));
+        const rows = Math.max(10, Math.floor(container.clientHeight / cell.height));
+        term.resize(cols, rows);
+        return { cols, rows };
+      }
+      const initialSize = fit();
+
+      let ws;
+      try {
+        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/terminal-ticket`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        ws = new WebSocket(`${proto}://${location.host}/ws/terminal?ticket=${encodeURIComponent(data.ticket)}&cols=${initialSize.cols}&rows=${initialSize.rows}`);
+        ws.binaryType = 'arraybuffer';
+        ws.onopen = () => { dot.className = 'dot ok'; statusEl.textContent = 'Connected.'; };
+        ws.onmessage = (ev) => {
+          const chunk = typeof ev.data === 'string' ? ev.data : new Uint8Array(ev.data);
+          term.write(chunk);
+        };
+        ws.onclose = () => { dot.className = 'dot'; statusEl.textContent = 'Disconnected.'; };
+        ws.onerror = () => { dot.className = 'dot err'; statusEl.textContent = 'Connection error.'; };
+
+        term.onData((data) => { if (ws.readyState === WebSocket.OPEN) ws.send(data); });
+        window.addEventListener('resize', () => {
+          const { cols, rows } = fit();
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+        });
+      } catch (err) {
+        dot.className = 'dot err';
+        statusEl.textContent = err.message;
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

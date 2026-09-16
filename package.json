@@ -1,0 +1,17 @@
+{
+  "name": "novita-dashboard",
+  "version": "1.0.0",
+  "description": "Local web dashboard for managing Novita AI resources (GPU instances, serverless endpoints, storage, billing).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "novita-sandbox": "^2.1.1",
+    "ws": "^8.21.3"
+  }
+}
