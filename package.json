@@ -4,10 +4,11 @@
   "description": "Local web dashboard for managing Novita AI resources (GPU instances, serverless endpoints, storage, billing).",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "bootstrap:sandbox": "sh scripts/bootstrap-sandbox.sh"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "express": "^4.19.2",
