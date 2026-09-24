@@ -14,7 +14,12 @@ fi
 
 if [ ! -d "$APP_DIR/.git" ]; then
   mkdir -p "$(dirname "$APP_DIR")"
-  git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
+  $SUDO chown user:user "$APP_DIR" 2>/dev/null || true
+  CLONE_DIR="${APP_DIR}.bootstrap.$$"
+  rm -rf "$CLONE_DIR"
+  git clone --branch "$BRANCH" "$REPO_URL" "$CLONE_DIR"
+  (cd "$CLONE_DIR" && tar --exclude='./data' -cf - .) | (cd "$APP_DIR" && tar -xf -)
+  rm -rf "$CLONE_DIR"
 else
   git -C "$APP_DIR" fetch origin "$BRANCH"
   git -C "$APP_DIR" merge --ff-only "origin/$BRANCH"
